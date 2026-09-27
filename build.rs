@@ -1,6 +1,7 @@
 //! Assembles the x86-64 engine (asm/, plans/asm-x86.md) with NASM and links it
-//! into the binary. Only for x86_64 Linux with the `asm` feature (on by
-//! default); everywhere else ttfx is pure Rust.
+//! into the binary, or on aarch64 Linux its port (asm/aarch64/, see its
+//! PORTING.md) with GNU as. Only with the `asm` feature (on by default);
+//! everywhere else ttfx is pure Rust.
 //!
 //! asm/lib.asm is assembled once per CPU tier (-DTIER=1..4, x86-64-v1..v4);
 //! each object exports its entry points with a `_v<tier>` suffix. asm/tier.asm
@@ -27,9 +28,17 @@ fn main() {
     println!("cargo::rerun-if-env-changed=NASM");
     println!("cargo::rerun-if-env-changed=TTFX_ASM_UNCHECKED_TIERS");
 
+    println!("cargo::rerun-if-env-changed=AS");
+
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    if env::var_os("CARGO_FEATURE_ASM").is_none() || arch != "x86_64" || os != "linux" {
+    if env::var_os("CARGO_FEATURE_ASM").is_none() || os != "linux" {
+        return;
+    }
+    if arch == "aarch64" {
+        return build_aarch64();
+    }
+    if arch != "x86_64" {
         return;
     }
 
@@ -151,6 +160,49 @@ fn main() {
     for (tier, _) in &linked {
         println!("cargo::rustc-cfg=ttfx_asm_tier=\"{tier}\"");
     }
+}
+
+/// The aarch64 engine: asm/aarch64/lib.s, one translation unit for GNU as at
+/// the ARMv8.0-A baseline (NEON, no LSE or SVE), so every aarch64 Linux
+/// machine runs it. There is one tier; it exports its entry points as `_v1`,
+/// and ttfx_asm_tier returns 1.
+fn build_aarch64() {
+    let out = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let assembler = env::var("AS").unwrap_or_else(|_| "as".to_string());
+    let object = out.join("ttfx_asm_aarch64.o");
+    let output = Command::new(&assembler)
+        .args(["-march=armv8-a", "-I", "asm/aarch64", "-o"])
+        .arg(&object)
+        .arg("asm/aarch64/lib.s")
+        .output();
+    match output {
+        Ok(output) if output.status.success() => {}
+        Ok(output) => {
+            let errors = String::from_utf8_lossy(&output.stderr);
+            let errors: Vec<&str> = errors.lines().filter(|l| l.contains("Error")).collect();
+            println!(
+                "cargo::warning=aarch64 asm left out: {assembler} rejected it ({} errors, first: {})",
+                errors.len(),
+                errors.first().unwrap_or(&"?")
+            );
+            return;
+        }
+        Err(e) => {
+            println!(
+                "cargo::warning=GNU as not found ({assembler}: {e}); building without the assembly \
+                 engine. Install binutils or point AS= at one."
+            );
+            return;
+        }
+    }
+    let library = out.join("libttfx_asm.a");
+    let _ = std::fs::remove_file(&library);
+    let status = Command::new("ar").arg("crs").arg(&library).arg(&object).status().expect("ar");
+    assert!(status.success(), "ar failed to archive the assembly engine");
+    println!("cargo::rustc-link-search=native={}", out.display());
+    println!("cargo::rustc-link-lib=static=ttfx_asm");
+    println!("cargo::rustc-cfg=ttfx_asm");
+    println!("cargo::rustc-cfg=ttfx_asm_tier=\"1\"");
 }
 
 /// The TEST_THUNK list asm/tier.asm includes: every EXPORT in asm/tests.asm.

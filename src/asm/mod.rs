@@ -1,4 +1,5 @@
-//! In-process dispatch to the x86-64 assembly engine (asm/, plans/asm-x86.md).
+//! In-process dispatch to the assembly engine: x86-64 (asm/, plans/asm-x86.md)
+//! or its aarch64 port (asm/aarch64/, asm/aarch64/PORTING.md).
 //!
 //! Rust stays the front end: it parses the command line, reads and validates
 //! the input, seeds the RNG and installs the signal handlers. Each run is then
@@ -11,7 +12,8 @@
 //!
 //! The engine is assembled once per x86-64 level (v1 = SSE2, v2, v3 = AVX2,
 //! v4 = AVX-512), and the best one the CPU supports runs; every tier's output
-//! is byte-identical. `TTFX_ASM_TIER=1|2|3|4` forces a lower tier for testing:
+//! is byte-identical. aarch64 has a single tier (1: ARMv8.0-A with NEON).
+//! `TTFX_ASM_TIER=1|2|3|4` forces a lower tier for testing:
 //! a tier above the CPU's, or one the build left out, is a decline (exit 3
 //! under `TTFX_ASM=force`). `TTFX_ASM_SHOW_TIER=1` prints on stderr which
 //! engine ran: the asm tier chosen, or why the Rust engine ran instead. See asm/PORTING.md, "CPU tiers".

@@ -7,8 +7,8 @@ license = "MIT"
 
 [features]
 default = ["asm"]
-# The x86-64 assembly engine (asm/). Needs NASM at build time; ignored on
-# other targets.
+# The assembly engine: x86-64 (asm/, needs NASM) or aarch64 (asm/aarch64/,
+# needs GNU as). Ignored on other targets.
 asm = []
 
 [dependencies]

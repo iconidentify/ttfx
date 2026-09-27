@@ -1,5 +1,6 @@
-//! The C ABI between Rust and asm/lib.asm. Field offsets here are mirrored by
-//! the RQ_* constants in asm/ttfx.inc; change both together.
+//! The C ABI between Rust and asm/lib.asm (or asm/aarch64/lib.s). Field
+//! offsets here are mirrored by the RQ_* constants in asm/ttfx.inc (and, through
+//! the generated asm/aarch64/defs.inc, the aarch64 engine); change them together.
 
 use std::ffi::c_void;
 use std::time::Instant;
@@ -67,7 +68,8 @@ const STOP_RESIZE: u64 = 3;
 const ERR_ANSI: u64 = 1;
 
 extern "C" {
-    /// The best x86-64 level (1-4) the CPU and OS support (asm/tier.asm).
+    /// The best x86-64 level (1-4) the CPU and OS support (asm/tier.asm);
+    /// always 1 on aarch64 (asm/aarch64/lib.s).
     fn ttfx_asm_tier() -> i32;
 }
 
@@ -111,7 +113,8 @@ tiers! {
 /// The engine to run: the tier `TTFX_ASM_TIER` names (1-4, at most the
 /// CPU's), or else the best linked tier the CPU supports.
 fn select_engine() -> Result<Engine, &'static str> {
-    // SAFETY: ttfx_asm_tier only executes CPUID and XGETBV.
+    // SAFETY: ttfx_asm_tier only executes CPUID and XGETBV (or, on aarch64,
+    // returns a constant).
     let cpu = unsafe { ttfx_asm_tier() }.clamp(1, 4) as u32;
     let forced = std::env::var("TTFX_ASM_TIER").unwrap_or_default();
     if forced.is_empty() {
