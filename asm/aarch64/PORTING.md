@@ -10,12 +10,11 @@ same binary (the oracle), declining only where the x86 engine declines.
 
 ## Status
 
-The whole engine and 32 of the 37 effects are ported; each ported effect passes
+The whole engine and all 37 effects are ported. Each passes
 `tools/asm/oracle.sh <effect> full`, and `cargo test --release --test asm_diff` passes.
-Not ported yet (their files are stubs, so the Rust engine runs them): bouncyballs,
-binarypath, expand, fireworks, scattered. The x86 engine's AVX2/AVX-512-only paths (the
-batched motion blocks, the 8-lane RNG generator) have no aarch64 counterpart; the
-SSE2-tier paths they accelerate are ported instead.
+The x86 engine's AVX2/AVX-512-only paths (the batched motion blocks, the 8-lane RNG
+generator) have no aarch64 counterpart; the SSE2-tier paths they accelerate are ported
+instead.
 
 ## Layout and build
 
