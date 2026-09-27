@@ -8,6 +8,15 @@ events, RNG order, parity) holds here. This file covers only what changes.
 The goal is the x86 engine's contract: output **byte-identical** to the Rust engine in the
 same binary (the oracle), declining only where the x86 engine declines.
 
+## Status
+
+The whole engine and 32 of the 37 effects are ported; each ported effect passes
+`tools/asm/oracle.sh <effect> full`, and `cargo test --release --test asm_diff` passes.
+Not ported yet (their files are stubs, so the Rust engine runs them): bouncyballs,
+binarypath, expand, fireworks, scattered. The x86 engine's AVX2/AVX-512-only paths (the
+batched motion blocks, the 8-lane RNG generator) have no aarch64 counterpart; the
+SSE2-tier paths they accelerate are ported instead.
+
 ## Layout and build
 
 - `asm/aarch64/<path>.s` ports `asm/<path>.asm` (`engine/scene.s` ports
